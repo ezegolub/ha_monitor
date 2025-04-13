@@ -5,8 +5,22 @@ import threading
 import time
 import winreg
 import subprocess
+import os
+import sys
+import fcntl
 
 VM_NAME = "HAVM" 
+LOCK_FILE = r"/tmp/monitor.lock"
+
+def ensure_single_instance():
+    """Ensure only one instance of the process is running globally."""
+    global lock_file
+    try:
+        lock_file = open(LOCK_FILE, "w")
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError:
+        print("Another instance of this process is already running.")
+        sys.exit(1)
 
 def is_game_running():
     """Retrieve the Windows registry to check if a game is running."""
@@ -109,14 +123,13 @@ def monitor_processes(icon, menu):
         time.sleep(5)  # Refresh every 5 seconds
         icon.update_menu()
         
-if __name__ == "__main__":   
+if __name__ == "__main__":
+    ensure_single_instance()
     # Create the tray icon
     menu = Menu(
         MenuItem(lambda _: 
                  "--- GAMING MODE ---" if is_game_running() else "--- BORING MODE ---", 
                  lambda _: None, enabled=False),
-        MenuItem("Start VM", lambda icon, item: None, enabled=False),
-        MenuItem("Pause VM", lambda icon, item: None, enabled=False),
         MenuItem("Quit", quit_program)
         )
     icon = Icon("Process Monitor", create_image(), "Process Monitor", menu)
