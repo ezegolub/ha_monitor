@@ -6,6 +6,7 @@ import time
 import winreg
 import subprocess
 
+VM_NAME = "HAVM" 
 
 def is_game_running():
     """Retrieve the Windows registry to check if a game is running."""
@@ -26,7 +27,7 @@ def get_vm_status(vm_name):
     """Check the status of a VirtualBox virtual machine."""
     try:
         result = subprocess.run(
-            ["VBoxManage", "showvminfo", vm_name, "--machinereadable"],
+            [r"C:\Program Files\Oracle\Virtualbox\VBoxManage.exe", "showvminfo", vm_name, "--machinereadable"],
             capture_output=True,
             text=True,
             check=True
@@ -41,6 +42,32 @@ def get_vm_status(vm_name):
     except subprocess.CalledProcessError as e:
         print(f"Error checking VM status: {e}")
     return "unknown"
+
+def start_vm(vm_name):
+    """Start a VirtualBox virtual machine."""
+    try:
+        subprocess.run(
+            [r"C:\Program Files\Oracle\Virtualbox\VBoxManage.exe", "startvm", vm_name, "--type", "headless"],
+            check=True
+        )
+        print(f"VM '{vm_name}' started successfully.")
+    except FileNotFoundError:
+        print("VBoxManage not found. Ensure VirtualBox is installed and VBoxManage is in PATH.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error starting VM: {e}")
+
+def interact_vm(vm_name, action):
+    """Pause a VirtualBox virtual machine."""
+    try:
+        subprocess.run(
+            [r"C:\Program Files\Oracle\Virtualbox\VBoxManage.exe", "controlvm", vm_name, action],
+            check=True
+        )
+        print(f"VM '{vm_name}' paused successfully.")
+    except FileNotFoundError:
+        print("VBoxManage not found. Ensure VirtualBox is installed and VBoxManage is in PATH.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error pausing VM: {e}")
 
 def create_image():
     """Create an image for the tray icon."""
@@ -65,20 +92,24 @@ def monitor_processes(icon, menu):
     while True:
         print(icon, menu)
         if is_game_running():
-            print("Game is running")       
+            print("Game is running")
+            if get_vm_status(VM_NAME) == "running":
+                print("Pausing VM...")
+                interact_vm(VM_NAME, "pause")       
         else:
-            print("No game running")      
+            print("No game running")
+            vm_status = get_vm_status(VM_NAME)      
+            if vm_status == "poweroff":
+                print("Starting VM...")
+                start_vm(VM_NAME)
+            elif vm_status == "paused":
+                print("Resuming VM...")
+                interact_vm(VM_NAME, "resume")
+        
         time.sleep(5)  # Refresh every 5 seconds
         icon.update_menu()
         
-        #icon.stop()
-
 if __name__ == "__main__":   
-    get_vm_status("Windows 11")  # Replace with your VM name
-
-    exit()
-    
-     
     # Create the tray icon
     menu = Menu(
         MenuItem(lambda _: 
