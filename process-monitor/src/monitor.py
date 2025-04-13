@@ -7,18 +7,15 @@ import winreg
 import subprocess
 import os
 import sys
-import fcntl
+import ctypes
 
-VM_NAME = "HAVM" 
-LOCK_FILE = r"/tmp/monitor.lock"
+VM_NAME = "HAVM"
+MUTEX_NAME = "Global\\ProcessMonitorMutex"
 
 def ensure_single_instance():
     """Ensure only one instance of the process is running globally."""
-    global lock_file
-    try:
-        lock_file = open(LOCK_FILE, "w")
-        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except IOError:
+    mutex = ctypes.windll.kernel32.CreateMutexW(None, False, MUTEX_NAME)
+    if ctypes.windll.kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
         print("Another instance of this process is already running.")
         sys.exit(1)
 
